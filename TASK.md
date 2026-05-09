@@ -89,7 +89,7 @@ The schema is non-negotiable. Deviating breaks our automated evaluator, and your
 
 - Here is the SHL catalogue: shl_product_catalog.json 
 
-- We provide **10 public conversation traces** for you to develop and iterate against. Each trace is a persona with a fact set and a labeled expected shortlist. Generally, it is important to read these traces before jumping into implementation. I hae downloaded the zip with these conversations in this folder: sample_conversations/
+- We provide **10 public conversation traces** for you to develop and iterate against. Each trace is a persona with a fact set and a labeled expected shortlist. Generally, it is important to read these traces before jumping into implementation. I hae downloaded these conversations in this folder: sample_conversations/
 
 ## **How we evaluate your submission** 
 
