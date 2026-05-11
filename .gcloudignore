@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests
+sample_conversations
+data/replay_runs
+.idea
+.vscode
+.env*
+TASK.md
+IMPLEMENTATION-CHECKLIST.md
+design-decisions.md

@@ -1,0 +1,21 @@
+.venv
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests
+sample_conversations
+data/replay_runs
+.idea
+.vscode
+.env
+.env.local
+*.local
+TASK.md
+IMPLEMENTATION-CHECKLIST.md
+design-decisions.md
+# NOTE: data/build/* IS intentionally included so pre-built embeddings ship in the image.
