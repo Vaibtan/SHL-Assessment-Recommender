@@ -1,10 +1,4 @@
-"""Tool declarations + Python implementations for the planning layer.
-
-Tools are exposed to handlers selectively (curated toolkit per intent).
-Each tool has:
-- a `FunctionDeclaration` for Gemini's function-calling API
-- a Python `_impl` callable invoked when Gemini emits a function call
-"""
+# Purpose: Tool declarations + Python implementations for the planning layer.
 
 from __future__ import annotations
 
@@ -32,7 +26,6 @@ class ToolBox:
     index: CatalogIndex
     query_vec_provider: Callable[[str], np.ndarray | None] | None = None
 
-    # ----------------------------- search_catalog -----------------------------
 
     def search_catalog(
         self,
@@ -65,7 +58,6 @@ class ToolBox:
         )
         return {"results": [_hit_summary(h, self.index.get(h.entity_id)) for h in hits]}
 
-    # ----------------------------- get_assessment -----------------------------
 
     def get_assessment(
         self,
@@ -76,19 +68,17 @@ class ToolBox:
         if entity_id:
             item = self.index.get(entity_id)
         if item is None and name:
-            item = _resolve_by_name(name, self.index.items)
+            item = self.index.resolve_name(name)
         if item is None:
             return {"found": False}
         return {"found": True, "item": _full_summary(item)}
 
-    # ------------------------------ find_similar ------------------------------
 
     def find_similar(self, entity_id: str, top_k: int = 5) -> dict[str, Any]:
         retriever = self.index.retriever
         hits = retriever.find_similar(entity_id, k=top_k)
         return {"results": [_hit_summary(h, self.index.get(h.entity_id)) for h in hits]}
 
-    # ------------------------------- list_facets ------------------------------
 
     def list_facets(self, query: str, top_k: int = 30) -> dict[str, Any]:
         """Return distinct facet values for items matching `query` — disambiguation aid."""
@@ -112,9 +102,7 @@ class ToolBox:
         }
 
 
-# ----------------------------- declarations -----------------------------------
 
-# Filter-shaped properties shared across declarations to keep declarations DRY.
 _FILTER_PROPS: dict[str, dict[str, Any]] = {
     "test_types": {
         "type": "ARRAY",
@@ -212,7 +200,6 @@ def dispatch(toolbox: ToolBox, name: str, args: dict[str, Any]) -> dict[str, Any
         return {"error": "internal tool error"}
 
 
-# ----------------------------- helpers ----------------------------------------
 
 
 def _hit_summary(hit, item: CatalogItem | None) -> dict[str, Any]:
@@ -256,22 +243,3 @@ def _snippet(text: str, max_chars: int) -> str:
         return text
     cut = text[:max_chars].rsplit(" ", 1)[0]
     return cut + "…"
-
-
-def _resolve_by_name(name: str, items: list[CatalogItem]) -> CatalogItem | None:
-    """Exact match first, then fuzzy via rapidfuzz."""
-    target = name.strip().lower()
-    if not target:
-        return None
-    for it in items:
-        if it.name.lower() == target:
-            return it
-    # Fuzzy
-    from rapidfuzz import fuzz, process
-
-    choices = {it.entity_id: it.name for it in items}
-    match = process.extractOne(name, choices, scorer=fuzz.WRatio, score_cutoff=85)
-    if match is None:
-        return None
-    matched_name, score, key = match
-    return next((it for it in items if it.entity_id == key), None)

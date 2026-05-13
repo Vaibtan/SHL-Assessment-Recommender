@@ -1,1 +1,1 @@
-"""Structured logging utilities."""
+# Purpose: Structured logging utilities.

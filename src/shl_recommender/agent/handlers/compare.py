@@ -1,12 +1,10 @@
-"""Compare handler — grounded explainer over two catalog items."""
+# Purpose: Compare handler — grounded explainer over two catalog items.
 
 from __future__ import annotations
 
-import asyncio
 import json
 
 import structlog
-from rapidfuzz import fuzz, process
 
 from shl_recommender.agent.handlers._base import HandlerResult, messages_to_contents
 from shl_recommender.agent.llm import LLMClient, LLMError, user_part
@@ -21,7 +19,6 @@ from shl_recommender.schemas import Message
 
 log = structlog.get_logger(__name__)
 
-# rapidfuzz score threshold for accepting a fuzzy name match.
 FUZZY_MATCH_THRESHOLD: int = 85
 
 
@@ -43,23 +40,18 @@ async def handle_compare(
         )
 
     name_a, name_b = decision.compare_pair.a, decision.compare_pair.b
-    item_a, item_b = await asyncio.gather(
-        asyncio.to_thread(_resolve, name_a, index.items),
-        asyncio.to_thread(_resolve, name_b, index.items),
-    )
+    item_a = index.resolve_name(name_a, score_cutoff=FUZZY_MATCH_THRESHOLD)
+    item_b = index.resolve_name(name_b, score_cutoff=FUZZY_MATCH_THRESHOLD)
 
     if item_a is None or item_b is None:
         fallbacks.append("compare_target_not_in_catalog")
-        suggestions = await asyncio.gather(
-            asyncio.to_thread(_suggest, name_a, index.items),
-            asyncio.to_thread(_suggest, name_b, index.items),
-        )
-        s_a, s_b = suggestions
+        s_a = index.suggest_name(name_a, score_cutoff=70)
+        s_b = index.suggest_name(name_b, score_cutoff=70)
         missing = []
         if item_a is None:
-            missing.append(f"'{name_a}'" + (f" — did you mean {s_a}?" if s_a else ""))
+            missing.append(f"'{name_a}'" + (f" — did you mean '{s_a}'?" if s_a else ""))
         if item_b is None:
-            missing.append(f"'{name_b}'" + (f" — did you mean {s_b}?" if s_b else ""))
+            missing.append(f"'{name_b}'" + (f" — did you mean '{s_b}'?" if s_b else ""))
         reply = (
             "I couldn't find " + " and ".join(missing) + " in the SHL catalog."
             if missing
@@ -104,37 +96,6 @@ async def handle_compare(
         fallbacks_triggered=fallbacks,
     )
 
-
-# --------------------------------------------------------------------------------------
-# Helpers
-# --------------------------------------------------------------------------------------
-
-
-def _resolve(name: str, items: list[CatalogItem]) -> CatalogItem | None:
-    if not name:
-        return None
-    target = name.strip().lower()
-    for it in items:
-        if it.name.lower() == target:
-            return it
-    choices = {it.entity_id: it.name for it in items}
-    match = process.extractOne(name, choices, scorer=fuzz.WRatio, score_cutoff=FUZZY_MATCH_THRESHOLD)
-    if match is None:
-        return None
-    _, _, eid = match
-    return next((it for it in items if it.entity_id == eid), None)
-
-
-def _suggest(name: str, items: list[CatalogItem]) -> str | None:
-    """Return the closest catalog name to `name`, or None if nothing close."""
-    if not name:
-        return None
-    choices = {it.entity_id: it.name for it in items}
-    match = process.extractOne(name, choices, scorer=fuzz.WRatio, score_cutoff=70)
-    if match is None:
-        return None
-    matched_name, _, _ = match
-    return f"'{matched_name}'"
 
 
 def _compose_payload(a: CatalogItem, b: CatalogItem) -> str:

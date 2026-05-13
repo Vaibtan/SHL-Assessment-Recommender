@@ -1,8 +1,4 @@
-"""Integration test for the FastAPI /chat endpoint via TestClient.
-
-Exercises the full HTTP path including lifespan loading. Uses a fake LLM by
-patching the agent's llm attribute after startup.
-"""
+# Purpose: Integration test for the FastAPI /chat endpoint via TestClient.
 
 from __future__ import annotations
 
@@ -34,7 +30,6 @@ def client(tmp_path: Path):
     )
 
     with TestClient(app) as c:
-        # Replace the LLM after lifespan loaded the agent.
         c.app.state.app_state.agent.llm = fake
         yield c
 

@@ -1,15 +1,4 @@
-"""Recommend handler — selection over a closed candidate pool.
-
-Strategy:
-1. Run retrieval for the router-emitted search_query + filters + coverage.
-2. Hand the candidates (with entity_ids) to Gemini Flash.
-3. Flash emits {"entity_ids": [...], "reply": "..."} via response_schema.
-4. Validation drops any id not in candidates.
-
-We deliberately keep this single-shot rather than tool-using — for recommend,
-retrieval is one step and the LLM's job is selection. If selection fails to
-return valid ids, we fall back to top retrieval candidates by RRF score.
-"""
+# Purpose: Recommend handler — selection over a closed candidate pool.
 
 from __future__ import annotations
 
@@ -37,11 +26,8 @@ from shl_recommender.schemas import Message
 
 log = structlog.get_logger(__name__)
 
-# Hard cap on candidate pool we send to the LLM — keeps prompt tight.
 MAX_CANDIDATES_TO_LLM: int = 18
 
-# Hard cap on emitted shortlist size from the model. API spec allows 10; we
-# cap to 8 to keep room for refine-style additions in subsequent turns.
 MAX_SHORTLIST: int = 8
 
 
@@ -79,7 +65,6 @@ async def handle_recommend(
     }
 
     if not candidates:
-        # Try filter relaxation: drop duration_max first, then language, then test_type.
         candidates = await _relax_and_retry_async(decision, features, index, llm, fallbacks)
         candidates = _merge_prioritized_candidates(alias_candidates, candidates)
         retrieval_stats["candidates_after_relaxation"] = len(candidates)
@@ -168,9 +153,6 @@ async def handle_recommend(
     )
 
 
-# --------------------------------------------------------------------------------------
-# Candidate pool construction
-# --------------------------------------------------------------------------------------
 
 
 async def _build_candidate_pool_async(
@@ -349,9 +331,6 @@ def _compose_user_payload(decision: RouterDecision, candidates: list[dict[str, A
     )
 
 
-# --------------------------------------------------------------------------------------
-# Fallback paths
-# --------------------------------------------------------------------------------------
 
 
 def _top_k_fallback(

@@ -1,1 +1,1 @@
-"""Catalog ingestion, indexing, and retrieval."""
+# Purpose: Catalog ingestion, indexing, and retrieval.

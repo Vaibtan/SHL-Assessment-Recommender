@@ -1,4 +1,4 @@
-"""Top-level agent orchestration — features → router → handler dispatch."""
+# Purpose: Top-level agent orchestration — features → router → handler dispatch.
 
 from __future__ import annotations
 
@@ -111,7 +111,6 @@ class Agent:
                 llm=self.llm,
                 index=self.index,
             )
-        # Default: recommend
         return await handle_recommend(
             messages=messages,
             decision=decision,

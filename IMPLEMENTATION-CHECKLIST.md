@@ -18,7 +18,7 @@
 > | **10c — Retrieval hardening & live-run reliability** | ✅ Done |
 > | 11 — Cloud Run deployment | ⏳ Pending |
 >
-> **Tests:** 108/108 passing (86 unit + 10 integration + 12 replay).
+> **Tests:** 112/112 passing (90 unit + 10 integration + 12 replay).
 > **Live verified:** `replay_live.py` mean Recall@10 = 0.98, schema 1.0; `probes_live.py` 7/7.
 > **Outstanding before submission:** Slice 11 — Cloud Run deploy + smoke test from public URL.
 
@@ -88,7 +88,7 @@ The deterministic policy layer: pre-router feature bundle (parse_prior_shortlist
 ### Acceptance criteria
 
 - [x] `src/shl_recommender/agent/llm.py` provides an async Gemini wrapper with Vertex auth, retry/backoff (300ms, 900ms), `generate_structured(model, contents, response_schema)` and `generate_with_tools(model, contents, tools, tool_config)` methods.
-- [x] `src/shl_recommender/features/pipeline.py` runs all features in parallel (`asyncio.gather`): `parse_prior_shortlist`, `peek_retrieval` (BM25-only for speed), `vagueness_score`, `is_confirmation`, `off_topic_signal`, `injection_signal`, `turn_budget_remaining`. Returns a `FeatureBundle` dataclass.
+- [x] `src/shl_recommender/features/pipeline.py` computes deterministic router features without threadpool churn: `parse_prior_shortlist`, `peek_retrieval` (BM25-only for speed), `vagueness_score`, `is_confirmation`, `off_topic_signal`, `injection_signal`, `turn_budget_remaining`. Returns a `FeatureBundle` dataclass.
 - [x] `src/shl_recommender/agent/router.py` assembles features into the router prompt and calls Gemini Flash with `response_schema` for `{intent, search_query, filters, compare_pair, clarifying_question, refuse_category, refuse_reason, is_final_turn}`.
 - [x] `src/shl_recommender/agent/prompts.py` holds the router system prompt encoding rules: turn-1 vagueness, turn-budget bias (turns_remaining ≤ 2 → prefer recommend), refuse criteria.
 - [x] `/chat` dispatches on the router's intent. Each intent path returns a canned reply for now (no real handlers yet) but with the correct `recommendations` and `end_of_conversation` shape.
@@ -145,7 +145,7 @@ Refinement across turns. The handler parses the prior shortlist from the previou
 
 ### What to build
 
-The compare intent. Router identifies two assessment names; handler does parallel `get_assessment` for both (or fuzzy-match resolution if exact name absent), then a single grounded LLM call drawing only from the two retrieved descriptions. Reply also re-prints the prior shortlist if one exists. After this slice, "What's the difference between OPQ and DSI?" returns a grounded comparison drawn from the catalog.
+The compare intent. Router identifies two assessment names; handler resolves both names in parallel (exact match, then fuzzy match), then a single grounded LLM call drawing only from the two retrieved descriptions. Reply also re-prints the prior shortlist if one exists. After this slice, "What's the difference between OPQ and DSI?" returns a grounded comparison drawn from the catalog.
 
 ### Acceptance criteria
 
@@ -266,7 +266,7 @@ Hardcoded model names and sampling temperatures across `agent/llm.py`, `agent/ro
 - [x] `agent/llm.py` re-exports `ROUTER_MODEL` / `HANDLER_MODEL` / `EMBEDDING_MODEL` / `EMBEDDING_DIMS` via `__getattr__` for backward compatibility.
 - [x] `tests/unit/test_config.py` covers defaults, env overrides, invalid-value fallback, and the backward-compat re-export path (6 tests).
 - [x] `.env.example` published at the project root with every variable documented.
-- [x] Test suite passes (105 tests at the close of this slice; 108 after Slice 10c).
+- [x] Test suite passes (105 tests at the close of this slice; 108 after Slice 10c; 110 after CatalogIndex deepening; 112 after code-style enforcement).
 
 ---
 
@@ -300,7 +300,7 @@ After the first live `replay_live.py` run produced mean Recall@10 ≈ 0.12, we t
 - [x] Unit tests for query expansion: stack-token matching, catalog acronym matching (`OPQ`, `DSI`, `HIPAA`, `G+`), and office-productivity synonyms (in `tests/unit/test_query_expansion.py`).
 - [x] Probe `no_end_without_shortlist` tightened to require both `end=False` AND `len(recommendations) == 0`.
 - [x] Live verification: `scripts/replay_live.py` mean Recall@10 = 0.98, schema valid = 1.0; `scripts/probes_live.py` 7/7 probes pass.
-- [x] All 108 tests pass.
+- [x] All 112 tests pass.
 
 ---
 

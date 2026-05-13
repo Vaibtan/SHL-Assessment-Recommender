@@ -1,25 +1,22 @@
-"""CatalogIndex — singleton loader composed of items, BM25, embeddings, coverage.
-
-The index is built once by `scripts/build_index.py` and serialized to disk.
-At runtime, the FastAPI app loads it during the lifespan startup.
-"""
+# Purpose: CatalogIndex — singleton loader composed of items, BM25, embeddings, coverage.
 
 from __future__ import annotations
 
 import pickle
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
 
 import numpy as np
 import pandas as pd
 from rank_bm25 import BM25Okapi
+from rapidfuzz import fuzz, process
 
 from shl_recommender.config import get_settings
 from shl_recommender.catalog.normalize import CatalogItem, from_parquet_records
 from shl_recommender.catalog.retrieval import CategoryCoverage, Retriever, l2_normalize, tokenize
 
-# Filenames within the build artifact directory.
 CATALOG_PARQUET: Final[str] = "catalog.parquet"
 EMBEDDINGS_NPY: Final[str] = "embeddings.npy"
 BM25_PKL: Final[str] = "bm25_index.pkl"
@@ -29,27 +26,90 @@ META_JSON: Final[str] = "meta.json"
 
 @dataclass(frozen=True, slots=True)
 class CatalogIndex:
-    """Immutable in-memory index — created once, shared across requests."""
+    """Immutable in-memory catalog facade — created once, shared across requests.
 
-    items: list[CatalogItem]
+    The public interface deliberately owns lookup maps and the Retriever so
+    request-path code does not rebuild O(N) structures per turn.
+    """
+
+    items: Sequence[CatalogItem]
     bm25: BM25Okapi
     embeddings: np.ndarray  # L2-normalized (N, D)
     coverage: CategoryCoverage
+    _by_id: dict[str, CatalogItem] = field(init=False, repr=False, compare=False)
+    _by_url: dict[str, CatalogItem] = field(init=False, repr=False, compare=False)
+    _by_name_lc: dict[str, CatalogItem] = field(init=False, repr=False, compare=False)
+    _name_choices: dict[str, str] = field(init=False, repr=False, compare=False)
+    _retriever: Retriever = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "items", tuple(self.items))
+        object.__setattr__(self, "_by_id", {it.entity_id: it for it in self.items})
+        object.__setattr__(self, "_by_url", {it.url.rstrip("/"): it for it in self.items})
+        object.__setattr__(self, "_by_name_lc", {it.name.lower(): it for it in self.items})
+        object.__setattr__(self, "_name_choices", {it.entity_id: it.name for it in self.items})
+        object.__setattr__(
+            self,
+            "_retriever",
+            Retriever(self.items, self.bm25, self.embeddings, self.coverage),
+        )
 
     @property
     def retriever(self) -> Retriever:
-        return Retriever(self.items, self.bm25, self.embeddings, self.coverage)
+        return self._retriever
 
     def get(self, entity_id: str) -> CatalogItem | None:
-        for it in self.items:
-            if it.entity_id == entity_id:
-                return it
-        return None
+        return self._by_id.get(entity_id)
+
+    def get_by_url(self, url: str) -> CatalogItem | None:
+        return self._by_url.get(url.rstrip("/"))
+
+    def get_by_name(self, name: str) -> CatalogItem | None:
+        return self._by_name_lc.get(name.strip().lower())
+
+    def resolve_name(self, name: str, *, score_cutoff: int = 85) -> CatalogItem | None:
+        """Resolve a catalog item by exact name, then RapidFuzz fallback."""
+        exact = self.get_by_name(name)
+        if exact is not None:
+            return exact
+        target = name.strip()
+        if not target:
+            return None
+        match = process.extractOne(
+            target,
+            self._name_choices,
+            scorer=fuzz.WRatio,
+            score_cutoff=score_cutoff,
+        )
+        if match is None:
+            return None
+        _, _, entity_id = match
+        return self.get(str(entity_id))
+
+    def suggest_name(self, name: str, *, score_cutoff: int = 70) -> str | None:
+        """Return the closest catalog item name, or None when nothing is close."""
+        target = name.strip()
+        if not target:
+            return None
+        match = process.extractOne(
+            target,
+            self._name_choices,
+            scorer=fuzz.WRatio,
+            score_cutoff=score_cutoff,
+        )
+        if match is None:
+            return None
+        matched_name, _, _ = match
+        return str(matched_name)
+
+    def items_for_ids(self, entity_ids: Iterable[str]) -> list[CatalogItem]:
+        """Resolve IDs to items, preserving order and dropping unknown IDs."""
+        return [item for eid in entity_ids if (item := self.get(eid)) is not None]
 
 
 def save_index(
     out_dir: Path,
-    items: list[CatalogItem],
+    items: Sequence[CatalogItem],
     embeddings: np.ndarray,
     bm25: BM25Okapi,
     coverage: CategoryCoverage,
@@ -82,7 +142,7 @@ def load_index(in_dir: Path) -> CatalogIndex:
 
 def _validate_embeddings_shape(
     embeddings: np.ndarray,
-    items: list[CatalogItem],
+    items: Sequence[CatalogItem],
     in_dir: Path,
 ) -> None:
     """Fail fast when runtime embedding config and baked artifacts diverge."""
@@ -102,13 +162,13 @@ def _validate_embeddings_shape(
         )
 
 
-def build_bm25(items: list[CatalogItem], search_text_fn) -> BM25Okapi:
+def build_bm25(items: Sequence[CatalogItem], search_text_fn) -> BM25Okapi:
     """Build a BM25 index from the items' search-text representations."""
     corpus = [tokenize(search_text_fn(it)) for it in items]
     return BM25Okapi(corpus)
 
 
-def derive_default_coverage(items: list[CatalogItem]) -> CategoryCoverage:
+def derive_default_coverage(items: Sequence[CatalogItem]) -> CategoryCoverage:
     """Pick exemplar items per test_type letter for category-coverage injection.
 
     Strategy: prefer well-known SHL anchors when present (OPQ32r, Verify G+,
@@ -130,14 +190,12 @@ def derive_default_coverage(items: list[CatalogItem]) -> CategoryCoverage:
 
     exemplars: dict[str, list[str]] = {letter: [] for letter in "KPASBCDE"}
 
-    # Anchor-first
     for letter, names in canonical_anchors.items():
         for name in names:
             for cand_name, eid in name_to_id.items():
                 if name in cand_name and eid not in exemplars[letter]:
                     exemplars[letter].append(eid)
 
-    # Backfill: for each letter, fill up to 5 exemplars by description length.
     for letter in "KPASBCDE":
         if len(exemplars[letter]) >= 5:
             continue
@@ -153,7 +211,7 @@ def derive_default_coverage(items: list[CatalogItem]) -> CategoryCoverage:
     return CategoryCoverage(exemplars={k: tuple(v) for k, v in exemplars.items()})
 
 
-def _records(items: list[CatalogItem]) -> list[dict]:
+def _records(items: Sequence[CatalogItem]) -> list[dict]:
     """Inline import-free serializer (same shape as normalize.to_parquet_records)."""
     from shl_recommender.catalog.normalize import to_parquet_records  # local to avoid cycle in tests
 

@@ -1,4 +1,4 @@
-"""Structured JSON logging — stdout sink, Cloud Logging-compatible."""
+# Purpose: Structured JSON logging — stdout sink, Cloud Logging-compatible.
 
 from __future__ import annotations
 

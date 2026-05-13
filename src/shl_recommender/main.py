@@ -1,4 +1,4 @@
-"""FastAPI application — entry point for /health and /chat."""
+# Purpose: FastAPI application — entry point for /health and /chat.
 
 from __future__ import annotations
 
@@ -16,7 +16,6 @@ from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-# Load `.env` from the project root if present (no-op in production / Cloud Run).
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env", override=False)
 
 from shl_recommender.agent.llm import LLMClient

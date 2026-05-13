@@ -1,9 +1,4 @@
-"""Behavior probe tests — exercised against scripted Fake LLM.
-
-The probes use the deterministic feature-pipeline-driven heuristic fallback in
-the router. We feed FakeLLMClient with router decisions consistent with what
-Gemini would emit, validating that downstream layers honor the contract.
-"""
+# Purpose: Behavior probe tests — exercised against scripted Fake LLM.
 
 from __future__ import annotations
 
@@ -113,7 +108,6 @@ async def test_probe_hallucination_guard(index: CatalogIndex) -> None:
             }
         )
     )
-    # Selection LLM emits a fake id alongside one real id.
     real_id = next(it.entity_id for it in index.items if "java" in it.name.lower())
     llm.handler_replies.append(
         stub_json({"entity_ids": ["FAKE-XYZBANK", real_id], "reply": "Closest matches."})
@@ -142,8 +136,6 @@ async def test_probe_refuse_never_ends(index: CatalogIndex) -> None:
 @pytest.mark.asyncio
 async def test_probe_no_end_without_shortlist(index: CatalogIndex) -> None:
     llm = FakeLLMClient()
-    # Even if the (mis)router suggests is_final_turn=true on a confirmation
-    # without prior shortlist, deterministic routing must convert it to clarify.
     llm.router_replies.append(
         stub_json(
             {
@@ -164,7 +156,6 @@ async def test_probe_no_end_without_shortlist(index: CatalogIndex) -> None:
 async def test_probe_catalog_only_urls(index: CatalogIndex) -> None:
     llm = FakeLLMClient()
     real_ids = [it.entity_id for it in index.items[:3]]
-    # 3 queries -> 3 router decisions and 3 handler decisions
     for _ in range(3):
         llm.router_replies.append(
             stub_json(

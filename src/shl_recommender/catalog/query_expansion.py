@@ -1,9 +1,4 @@
-"""High-precision catalog query expansion.
-
-This module is the deterministic companion to hybrid retrieval. It promotes
-catalog items that are strongly implied by exact skills, product acronyms, or
-stable SHL-domain synonyms before an LLM selects from the closed candidate pool.
-"""
+# Purpose: High-precision catalog query expansion.
 
 from __future__ import annotations
 
@@ -80,8 +75,6 @@ _HIGH_SIGNAL_SINGLE_TOKENS: Final[set[str]] = {
     "word",
 }
 
-# Domain-level synonyms. These are deliberately phrased as reusable hiring and
-# assessment concepts rather than replay-sample branches.
 _CONCEPT_RULES: Final[tuple[_ConceptRule, ...]] = (
     _ConceptRule(
         name="leadership_personality",

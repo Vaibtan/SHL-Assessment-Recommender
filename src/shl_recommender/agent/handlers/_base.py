@@ -1,10 +1,4 @@
-"""Shared handler abstractions — types every handler returns + a tool-loop runner.
-
-The tool loop is a single, reusable inner agent loop with:
-- explicit max_iterations cap
-- parallel-safe tool invocation
-- single-shot fallback on tool-call failure
-"""
+# Purpose: Shared handler abstractions — types every handler returns + a tool-loop runner.
 
 from __future__ import annotations
 
@@ -96,13 +90,10 @@ async def run_tool_loop(
 
         tool_calls += len(result.function_calls)
 
-        # Execute tool calls (in parallel where possible).
         tool_responses = await asyncio.gather(
             *(_execute_tool(toolbox, fc) for fc in result.function_calls)
         )
 
-        # Append the model's tool-call turn AND each function response back into
-        # contents so the next iteration sees the chain.
         model_parts = [
             gtypes.Part(function_call=fc) for fc in result.function_calls
         ]
@@ -112,7 +103,6 @@ async def run_tool_loop(
 
     fallbacks.append("max_iterations_reached")
     log.info("handler_max_iterations", iters=max_iterations)
-    # One more call without tools to coerce a final text answer.
     try:
         result = await llm.generate_text(
             model=get_settings().handler_model,

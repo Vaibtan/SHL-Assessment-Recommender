@@ -1,1 +1,1 @@
-"""Pre-router feature pipeline — deterministic context for the policy layer."""
+# Purpose: Pre-router feature pipeline — deterministic context for the policy layer.

@@ -1,30 +1,20 @@
-"""Pre-router feature pipeline.
-
-Pure-Python (mostly) features computed before the router runs. The router
-consumes these features instead of *deciding* whether to fetch them, which
-preserves determinism in the policy layer.
-"""
+# Purpose: Pre-router feature pipeline.
 
 from __future__ import annotations
 
-import asyncio
 import re
 from dataclasses import dataclass, field
 from typing import Final, Sequence
 
 import numpy as np
-from rapidfuzz import fuzz
 
 from shl_recommender.agent.llm import LLMClient
 from shl_recommender.catalog.loader import CatalogIndex
 from shl_recommender.catalog.retrieval import RetrievalHit, l2_normalize
 from shl_recommender.schemas import Message
 
-# Hard cap from the API spec.
 MAX_TURNS: Final[int] = 8
 
-# Confirmation phrases — each pattern owns its own word boundaries because
-# some phrases legitimately end in punctuation that isn't a word character.
 _CONFIRMATION_PATTERNS: Final[tuple[re.Pattern[str], ...]] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
@@ -50,7 +40,6 @@ _CONFIRMATION_PATTERNS: Final[tuple[re.Pattern[str], ...]] = tuple(
     )
 )
 
-# Prompt-injection patterns — conservative, no false-positives on benign text.
 _INJECTION_PATTERNS: Final[tuple[re.Pattern[str], ...]] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
@@ -67,7 +56,6 @@ _INJECTION_PATTERNS: Final[tuple[re.Pattern[str], ...]] = tuple(
     )
 )
 
-# Off-topic markers — keywords that strongly signal not-an-SHL-question.
 _OFF_TOPIC_KEYWORDS: Final[tuple[str, ...]] = (
     "weather",
     "stock price",
@@ -85,7 +73,6 @@ _OFF_TOPIC_KEYWORDS: Final[tuple[str, ...]] = (
     "football",
 )
 
-# Legal / regulatory markers — drives the legal refuse path.
 _LEGAL_KEYWORDS: Final[tuple[str, ...]] = (
     r"legally required",
     r"legally obligated",
@@ -97,7 +84,6 @@ _LEGAL_KEYWORDS: Final[tuple[str, ...]] = (
     r"fulfil(?:s|l)?\s+\w*\s*regulatory",
 )
 
-# Markdown table parser — captures rows like "| ... | URL |".
 _MD_LINK_RE: Final[re.Pattern[str]] = re.compile(
     r"<?(https?://www\.shl\.com/products/product-catalog/view/[^>\s|)]+)/?>?"
 )
@@ -138,9 +124,6 @@ class FeatureBundle:
         }
 
 
-# --------------------------------------------------------------------------------------
-# Feature implementations
-# --------------------------------------------------------------------------------------
 
 
 def latest_user_message(messages: Sequence[Message]) -> str:
@@ -166,19 +149,15 @@ def parse_prior_shortlist(messages: Sequence[Message], index: CatalogIndex) -> l
 
     Returns ordered, deduplicated entity_ids.
     """
-    by_url: dict[str, str] = {it.url.rstrip("/"): it.entity_id for it in index.items}
-    by_name_lc: dict[str, str] = {it.name.lower(): it.entity_id for it in index.items}
-
     for m in reversed(messages):
         if m.role != "assistant":
             continue
         urls = _MD_LINK_RE.findall(m.content)
         if urls:
-            ids = _resolve_urls(urls, by_url)
+            ids = _resolve_urls(urls, index)
             if ids:
                 return ids
-        # Fallback: parse names from each pipe-row's second column.
-        ids = _parse_names_from_table(m.content, by_name_lc)
+        ids = _parse_names_from_table(m.content, index)
         if ids:
             return ids
     return []
@@ -208,7 +187,6 @@ def vagueness_score(text: str) -> float:
         return 1.0
     if n >= 25:
         return 0.0
-    # linear interpolation
     return max(0.0, min(1.0, (25 - n) / 21))
 
 
@@ -243,13 +221,9 @@ def peek_retrieval(query: str, index: CatalogIndex, k: int = 3) -> list[Retrieva
     if not query.strip():
         return []
     retriever = index.retriever
-    # query_vec=None disables dense retrieval; we only need a quick lexical signal.
     return retriever.retrieve(query=query, query_vec=None, per_retriever_k=k, final_k=k)
 
 
-# --------------------------------------------------------------------------------------
-# Pipeline orchestration
-# --------------------------------------------------------------------------------------
 
 
 async def build_feature_bundle(
@@ -257,35 +231,21 @@ async def build_feature_bundle(
     index: CatalogIndex,
     llm: LLMClient | None = None,  # accepted for parity; embeddings are deferred to handlers
 ) -> FeatureBundle:
-    """Compute every feature concurrently and return a FeatureBundle.
+    """Compute deterministic router features.
 
-    Most features are pure CPU; we still gather them via asyncio so the
-    interface is uniform with future async features (embedding-based off-topic,
-    LLM-based intent hints, etc.).
+    The function stays async because it is part of the agent pipeline contract,
+    but the current features are deliberately cheap and run inline. Avoiding
+    `asyncio.to_thread` here prevents threadpool churn under high concurrency.
     """
     user_msg = latest_user_message(messages)
     turn_index, turns_remaining = turn_budget(messages)
-
-    # Spawn parallel tasks; CPU-bound steps are short enough that the asyncio
-    # overhead is negligible. This pattern stays clean as new features arrive.
-    coros = (
-        asyncio.to_thread(parse_prior_shortlist, messages, index),
-        asyncio.to_thread(is_confirmation, user_msg),
-        asyncio.to_thread(vagueness_score, user_msg),
-        asyncio.to_thread(injection_signal, user_msg),
-        asyncio.to_thread(off_topic_signal, user_msg),
-        asyncio.to_thread(legal_signal, user_msg),
-        asyncio.to_thread(peek_retrieval, user_msg, index, 3),
-    )
-    (
-        prior_ids,
-        confirmation,
-        vague,
-        injection,
-        off_topic,
-        legal,
-        peek_hits,
-    ) = await asyncio.gather(*coros)
+    prior_ids = parse_prior_shortlist(messages, index)
+    confirmation = is_confirmation(user_msg)
+    vague = vagueness_score(user_msg)
+    injection = injection_signal(user_msg)
+    off_topic = off_topic_signal(user_msg)
+    legal = legal_signal(user_msg)
+    peek_hits = peek_retrieval(user_msg, index, 3)
 
     return FeatureBundle(
         turn_index=turn_index,
@@ -302,23 +262,21 @@ async def build_feature_bundle(
     )
 
 
-# --------------------------------------------------------------------------------------
-# Internals
-# --------------------------------------------------------------------------------------
 
 
-def _resolve_urls(urls: list[str], by_url: dict[str, str]) -> list[str]:
+def _resolve_urls(urls: list[str], index: CatalogIndex) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for u in urls:
-        eid = by_url.get(u.rstrip("/"))
+        item = index.get_by_url(u)
+        eid = item.entity_id if item is not None else None
         if eid and eid not in seen:
             out.append(eid)
             seen.add(eid)
     return out
 
 
-def _parse_names_from_table(markdown: str, by_name_lc: dict[str, str]) -> list[str]:
+def _parse_names_from_table(markdown: str, index: CatalogIndex) -> list[str]:
     """Fuzzy-match names from each table row's second column."""
     out: list[str] = []
     seen: set[str] = set()
@@ -331,20 +289,9 @@ def _parse_names_from_table(markdown: str, by_name_lc: dict[str, str]) -> list[s
         name = parts[1]
         if not name or name.startswith("---") or name.lower() == "name":
             continue
-        # Strip markdown emphasis / extra spaces
         name = re.sub(r"[*_`]", "", name).strip()
-        eid = by_name_lc.get(name.lower())
-        if eid is None:
-            # Fuzzy fallback for slight rendering differences.
-            best = None
-            best_score = 0
-            for cand_name, cand_eid in by_name_lc.items():
-                score = fuzz.WRatio(name.lower(), cand_name)
-                if score > best_score:
-                    best_score = score
-                    best = cand_eid
-            if best and best_score >= 90:
-                eid = best
+        item = index.resolve_name(name, score_cutoff=90)
+        eid = item.entity_id if item is not None else None
         if eid and eid not in seen:
             out.append(eid)
             seen.add(eid)

@@ -1,4 +1,4 @@
-"""Reply assembly — markdown shortlist embedding + end_of_conversation invariant."""
+# Purpose: Reply assembly — markdown shortlist embedding + end_of_conversation invariant.
 
 from __future__ import annotations
 
@@ -48,12 +48,11 @@ def assemble_chat_response(
     from shl_recommender.assembly.validator import materialize  # local to keep deps light
 
     recommendations = materialize(entity_ids, index)
-    items = [it for it in (index.get(r.url and _id_for(index, r)) for r in recommendations) if it is not None]
-    # ↑ a clean re-resolve; keeps Recommendation list and table aligned by entity_id order.
+    items = _items_for_recs(recommendations, index)
 
     body = reply_text.rstrip()
     if recommendations:
-        table = render_shortlist_table(items if items else _items_for_recs(recommendations, index))
+        table = render_shortlist_table(items)
         if table:
             body = f"{body}\n\n{table}" if body else table
 
@@ -65,19 +64,10 @@ def assemble_chat_response(
     )
 
 
-def _id_for(index: CatalogIndex, rec: Recommendation) -> str:
-    """Resolve a Recommendation back to its entity_id by URL match (safer than name)."""
-    for it in index.items:
-        if it.url == rec.url:
-            return it.entity_id
-    return ""
-
-
 def _items_for_recs(recs: list[Recommendation], index: CatalogIndex) -> list[CatalogItem]:
     out: list[CatalogItem] = []
     for r in recs:
-        for it in index.items:
-            if it.url == r.url:
-                out.append(it)
-                break
+        item = index.get_by_url(r.url)
+        if item is not None:
+            out.append(item)
     return out

@@ -1,13 +1,4 @@
-"""Persona extraction from sample_conversations/C*.md.
-
-Each sample is a multi-turn dialogue where:
-- The user's turn-1 message reveals the persona / scenario.
-- Subsequent user turns add facts / preferences.
-- The assistant's final-turn markdown table is the labeled expected shortlist.
-
-We parse all 10 traces into structured `SamplePersona` records that the replay
-harness can drive against the live agent.
-"""
+# Purpose: Persona extraction from sample_conversations/C*.md.
 
 from __future__ import annotations
 
@@ -84,7 +75,6 @@ def _extract_expected_shortlist(text: str, index: CatalogIndex) -> tuple[list[st
         return [], []
     final_block = agent_blocks[-1]
 
-    # Prefer URL-based resolution (most reliable).
     urls = _URL_RE.findall(final_block)
     by_url = {it.url.rstrip("/"): it.entity_id for it in index.items}
     by_name = {it.name: it.entity_id for it in index.items}
@@ -100,7 +90,6 @@ def _extract_expected_shortlist(text: str, index: CatalogIndex) -> tuple[list[st
             seen_ids.add(eid)
 
     if not ids:
-        # Fallback: parse names from the table and fuzzy-match.
         candidate_names = [n.strip() for n in _TABLE_NAME_RE.findall(final_block)]
         for name in candidate_names:
             if not name or name.lower() == "name":
@@ -115,7 +104,6 @@ def _extract_expected_shortlist(text: str, index: CatalogIndex) -> tuple[list[st
                 names.append(name)
                 seen_ids.add(eid)
     else:
-        # Map ids back to display names.
         id_to_name = {it.entity_id: it.name for it in index.items}
         names = [id_to_name.get(eid, "") for eid in ids]
 

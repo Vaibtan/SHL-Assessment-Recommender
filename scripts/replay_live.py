@@ -1,13 +1,4 @@
-"""Live replay runner — exercises the full agent against real Vertex / AI Studio.
-
-Usage:
-    GOOGLE_CLOUD_PROJECT=<project> uv run python scripts/replay_live.py
-    GOOGLE_API_KEY=<key>          uv run python scripts/replay_live.py
-
-Loads the catalog index, builds a real LLMClient, replays every persona in
-sample_conversations/, prints per-trace Recall@10 + summary, and writes a JSONL
-artifact under data/replay_runs/.
-"""
+# Purpose: Live replay runner — exercises the full agent against real Vertex / AI Studio.
 
 from __future__ import annotations
 
@@ -62,7 +53,6 @@ async def main() -> int:
     llm = LLMClient()
     agent = Agent(index=index, llm=llm)
 
-    # Local import to keep the CLI dep-light when the script is unused.
     from tests.replay.harness import replay_all, write_jsonl
 
     print("Replaying personas...")

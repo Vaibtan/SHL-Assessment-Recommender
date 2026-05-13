@@ -1,8 +1,4 @@
-"""Retrieval — hybrid BM25 + dense + RRF, hard facet filters, category coverage.
-
-This module is pure-CPU and stateless across requests; it operates on the
-immutable `CatalogIndex` loaded once at startup.
-"""
+# Purpose: Retrieval — hybrid BM25 + dense + RRF, hard facet filters, category coverage.
 
 from __future__ import annotations
 
@@ -16,11 +12,8 @@ from rank_bm25 import BM25Okapi
 
 from shl_recommender.catalog.normalize import CatalogItem
 
-# RRF k constant — 60 is the de-facto standard from Cormack et al.
 RRF_K: Final[int] = 60
 
-# Default top-K per individual retriever before fusion. Catalog is small (~377)
-# so going wide is cheap and improves fusion quality.
 DEFAULT_PER_RETRIEVER_K: Final[int] = 30
 
 _TOKEN_RE = re.compile(r"\.?[A-Za-z0-9][A-Za-z0-9\-+#.]*")
@@ -38,7 +31,6 @@ def tokenize(text: str) -> list[str]:
     out: list[str] = []
     for m in _TOKEN_RE.finditer(text):
         tok = m.group(0).lower()
-        # Trim only trailing dots (sentence terminators); preserve `+`, `#`, `-`.
         while tok.endswith("."):
             tok = tok[:-1]
         if tok:
@@ -178,7 +170,7 @@ class Retriever:
 
     def __init__(
         self,
-        items: list[CatalogItem],
+        items: Sequence[CatalogItem],
         bm25: BM25Okapi,
         embeddings: np.ndarray,
         category_coverage: CategoryCoverage,
@@ -273,9 +265,6 @@ class Retriever:
             )
             seen.add(eid)
 
-        # Category-coverage injection: ensure each requested letter has at least
-        # one item in the pool. Inject from exemplars if missing. Filtered
-        # exemplars (failing hard filters) are skipped.
         for letter in coverage_letters:
             if any(letter in self.items[self._id_to_idx[h.entity_id]].test_type.split(",") for h in hits):
                 continue

@@ -1,4 +1,4 @@
-"""API request/response schemas — strict Pydantic v2 models matching the spec."""
+# Purpose: API request/response schemas — strict Pydantic v2 models matching the spec.
 
 from __future__ import annotations
 
@@ -7,12 +7,6 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from typing_extensions import Annotated
 
-# Single-letter test type codes derived from the catalog's `keys` field.
-# K=Knowledge & Skills, P=Personality & Behavior, A=Ability & Aptitude,
-# S=Simulations, B=Biodata & Situational Judgment, C=Competencies,
-# D=Development & 360, E=Assessment Exercises.
-# A `test_type` may be a comma-joined multi-letter code (e.g. "K,S") for items
-# tagged with multiple categories — matches sample-conversation conventions.
 TestTypeCode = Annotated[str, StringConstraints(min_length=1, max_length=15, pattern=r"^[KPASBCDE](,[KPASBCDE])*$")]
 
 

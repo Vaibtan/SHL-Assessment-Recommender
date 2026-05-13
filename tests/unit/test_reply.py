@@ -1,4 +1,4 @@
-"""Unit tests for the assembly/reply layer."""
+# Purpose: Unit tests for the assembly/reply layer.
 
 from __future__ import annotations
 

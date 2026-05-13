@@ -1,7 +1,4 @@
-"""
-Live behavior-probe runner — same probes as `tests/replay/probes.py` but
-exercised against the real Gemini-backed agent.
-"""
+# Purpose: Live behavior-probe runner against the Gemini-backed agent.
 
 from __future__ import annotations
 
@@ -24,7 +21,6 @@ from shl_recommender.agent.runner import Agent
 from shl_recommender.catalog.loader import load_index
 from shl_recommender.observability.logging import configure_logging
 
-# tests/ is at the project root, not inside src/. Add it to the path.
 TESTS_DIR = ROOT
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))

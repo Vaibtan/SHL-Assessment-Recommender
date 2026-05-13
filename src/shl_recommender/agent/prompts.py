@@ -1,4 +1,4 @@
-"""Prompt templates — single source of truth for all agent prompts."""
+# Purpose: Prompt templates — single source of truth for all agent prompts.
 
 from __future__ import annotations
 
@@ -33,7 +33,6 @@ Your job is to emit ONE decision in the response_schema shape:
     "swap": [{"from": "...", "to": "..."}] # paired swaps
   },
   "is_final_turn": bool                   # true ONLY when user is confirming and a shortlist exists
-                                           # (or is being committed) this turn
 }
 
 Hard rules (these are non-negotiable):

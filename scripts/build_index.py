@@ -1,15 +1,4 @@
-"""Build script — produces all catalog index artifacts.
-
-Usage:
-    uv run python scripts/build_index.py [--dry-run]
-
-Reads `data/shl_product_catalog.json`, normalizes records, computes
-`gemini-embedding-001` vectors at 768 dims (Matryoshka), builds the BM25 index
-and category-coverage exemplars, and writes `data/build/*` artifacts that the
-runtime loads at FastAPI startup.
-
-The script is idempotent — re-running overwrites the artifacts.
-"""
+# Purpose: Build script — produces all catalog index artifacts.
 
 from __future__ import annotations
 
@@ -23,13 +12,11 @@ from pathlib import Path
 import numpy as np
 from dotenv import load_dotenv
 
-# Ensure src/ is importable when running directly.
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-# Load .env from project root if present.
 load_dotenv(dotenv_path=ROOT / ".env", override=False)
 
 from shl_recommender.catalog.loader import (

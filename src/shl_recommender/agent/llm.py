@@ -1,9 +1,4 @@
-"""Gemini client wrapper — Vertex AI auth, async, retry, structured output, tools.
-
-This is the single integration boundary with `google-genai`. All other agent
-code talks to `LLMClient` rather than the SDK directly so the SDK can be swapped
-or mocked without ripple.
-"""
+# Purpose: Gemini client wrapper — Vertex AI auth, async, retry, structured output, tools.
 
 from __future__ import annotations
 
@@ -35,9 +30,6 @@ log = structlog.get_logger(__name__)
 _LLM_STATS: ContextVar[dict[str, Any] | None] = ContextVar("llm_stats", default=None)
 
 
-# Backward-compat constants — sourced from `shl_recommender.config` (which reads
-# `.env`). Resolved lazily via `__getattr__` so a test that calls
-# `reset_settings_cache()` after mutating env vars sees the fresh value.
 def __getattr__(name: str) -> object:
     settings = get_settings()
     mapping = {
@@ -76,14 +68,6 @@ def end_llm_stats(token: Token) -> dict[str, Any]:
     }
 
 
-# --- Schema sanitization ------------------------------------------------------------
-#
-# Pydantic v2's `model_json_schema()` emits standard JSON Schema features that the
-# Gemini Generative Language API (AI Studio) rejects: `additionalProperties`, nested
-# `$ref` / `$defs`, and the JSON-Schema canonical `anyOf: [{X}, {"type": "null"}]`
-# pattern for optional fields. Vertex AI tolerates more, but we want one schema that
-# works against both backends. This helper inlines `$ref`s, drops unsupported keys,
-# and converts the optional pattern to Gemini's `nullable: true` form.
 
 _UNSUPPORTED_KEYS: frozenset[str] = frozenset(
     {"additionalProperties", "additional_properties", "$defs", "definitions", "title", "default"}
@@ -208,10 +192,7 @@ class LLMClient:
         with self._client_lock:
             if self._client is not None:
                 return self._client
-            # Prefer Vertex when a project is set (better latency, IAM auth);
-            # fall back to AI Studio (Generative Language API) with a bare API key.
             if self._project and self._api_key:
-                # Vertex with explicit API key — supported in google-genai >=1.0.
                 self._client = genai.Client(
                     vertexai=True,
                     project=self._project,
@@ -219,7 +200,6 @@ class LLMClient:
                     api_key=self._api_key,
                 )
             elif self._project:
-                # Vertex with Application Default Credentials.
                 self._client = genai.Client(
                     vertexai=True, project=self._project, location=self._location
                 )
@@ -513,7 +493,6 @@ def _normalize_response(raw: Any) -> LLMCallResult:
             tokens_in = getattr(usage, "prompt_token_count", None)
             tokens_out = getattr(usage, "candidates_token_count", None)
     except Exception:
-        # If we can't normalize, return what we have — caller decides.
         pass
 
     return LLMCallResult(
@@ -526,7 +505,6 @@ def _normalize_response(raw: Any) -> LLMCallResult:
     )
 
 
-# ---------------------------- helpers -----------------------------------------
 
 
 def user_part(text: str) -> gtypes.Content:

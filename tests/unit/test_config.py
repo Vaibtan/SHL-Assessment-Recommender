@@ -1,4 +1,4 @@
-"""Unit tests for the env-driven config layer."""
+# Purpose: Unit tests for the env-driven config layer.
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ def _reset_cache():
 
 
 def test_defaults_match_locked_design(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Clear any operator overrides so we observe the locked defaults.
     for key in (
         "SHL_ROUTER_MODEL",
         "SHL_HANDLER_MODEL",

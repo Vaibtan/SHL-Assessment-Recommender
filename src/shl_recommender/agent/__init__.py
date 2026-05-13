@@ -1,1 +1,1 @@
-"""Agent layer — Gemini client, router, handlers, tools."""
+# Purpose: Agent layer — Gemini client, router, handlers, tools.

@@ -428,7 +428,7 @@ SAFETY/ASSEMBLY  (deterministic — Python only)
 | Logging | `structlog` (JSON renderer) |
 | Retry | `tenacity` (async, exponential backoff) |
 | Config | `python-dotenv` + `src/shl_recommender/config.py` (env-driven `Settings`) |
-| Tests | `pytest`, `pytest-asyncio` (108 tests: 86 unit + 10 integration + 12 replay) |
+| Tests | `pytest`, `pytest-asyncio` (112 tests: 90 unit + 10 integration + 12 replay) |
 | Container | `python:3.11-slim` (multi-stage Dockerfile, embeddings pre-baked) |
 | Hosting | GCP Cloud Run, `us-central1` (project `shl-recommender-495908`) |
 
@@ -439,6 +439,6 @@ SAFETY/ASSEMBLY  (deterministic — Python only)
 | Mean Recall@10 (10 personas) | **0.98** | `scripts/replay_live.py` artifact `data/replay_runs/replay_1778512594.jsonl` |
 | Schema compliance | 1.0 across every turn | same |
 | Behavior probes | 7/7 pass | `scripts/probes_live.py` |
-| Unit + integration + replay | 108/108 pass | `uv run pytest` |
+| Unit + integration + replay | 112/112 pass | `uv run pytest` |
 
 These were measured against the sample-conversation personas. See §5b for the metric-fitting caveat on the concept-rule half of query expansion — these numbers describe sample-replay behavior, not held-out generalization.

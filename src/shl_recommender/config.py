@@ -1,33 +1,4 @@
-"""Runtime configuration loaded from environment variables.
-
-All model choices and per-call sampling parameters live here. Defaults match the
-decisions locked in `design-decisions.md`. The `.env` at the project root is
-loaded by `main.py` and the `scripts/*` entry points before this module's
-settings are first read.
-
-Override any of these by exporting the env var (or putting it in `.env`):
-
-  Model selection:
-    SHL_ROUTER_MODEL          (default: gemini-2.5-flash)
-    SHL_HANDLER_MODEL         (default: gemini-2.5-flash)
-    SHL_EMBEDDING_MODEL       (default: gemini-embedding-001)
-    SHL_EMBEDDING_DIMS        (default: 768)
-
-  Sampling temperatures (per call site):
-    SHL_ROUTER_TEMPERATURE    (default: 0.0)
-    SHL_RECOMMEND_TEMPERATURE (default: 0.1)
-    SHL_REFINE_TEMPERATURE    (default: 0.1)
-    SHL_COMPARE_TEMPERATURE   (default: 0.2)
-    SHL_CLARIFY_TEMPERATURE   (default: 0.3)
-    SHL_TOP_P                 (default: 0.95)
-
-  Embedding pipeline:
-    SHL_EMBEDDING_BATCH_SIZE  (default: 32)
-
-  Runtime safety:
-    SHL_LLM_TIMEOUT_SECONDS   (default: 10.0)
-    SHL_REQUEST_TIMEOUT_SECONDS (default: 28.0)
-"""
+# Purpose: Runtime configuration loaded from environment variables.
 
 from __future__ import annotations
 
@@ -41,13 +12,11 @@ from typing import Final
 class Settings:
     """Frozen runtime configuration. Read once via `get_settings()`."""
 
-    # Model selection
     router_model: str
     handler_model: str
     embedding_model: str
     embedding_dims: int
 
-    # Sampling — temperatures per call site (top_p shared)
     router_temperature: float
     recommend_temperature: float
     refine_temperature: float
@@ -55,17 +24,12 @@ class Settings:
     clarify_temperature: float
     top_p: float
 
-    # Embedding pipeline
     embedding_batch_size: int
 
-    # Runtime safety
     llm_timeout_seconds: float
     request_timeout_seconds: float
 
 
-# ---------------------------------------------------------------------------
-# Defaults — single source of truth for "what the locked design says".
-# ---------------------------------------------------------------------------
 
 _DEFAULT_ROUTER_MODEL: Final[str] = "gemini-2.5-flash"
 _DEFAULT_HANDLER_MODEL: Final[str] = "gemini-2.5-flash"
@@ -82,9 +46,6 @@ _DEFAULT_LLM_TIMEOUT_SECONDS: Final[float] = 10.0
 _DEFAULT_REQUEST_TIMEOUT_SECONDS: Final[float] = 28.0
 
 
-# ---------------------------------------------------------------------------
-# Env-var coercion helpers
-# ---------------------------------------------------------------------------
 
 
 def _env_str(name: str, default: str) -> str:
@@ -112,9 +73,6 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-# ---------------------------------------------------------------------------
-# Public accessor
-# ---------------------------------------------------------------------------
 
 
 @lru_cache(maxsize=1)
@@ -155,14 +113,6 @@ def reset_settings_cache() -> None:
     get_settings.cache_clear()
 
 
-# ---------------------------------------------------------------------------
-# Backward-compat constants (re-exported from agent.llm).
-#
-# Existing import sites do `from shl_recommender.agent.llm import ROUTER_MODEL`
-# etc. Those names are now resolved through this module so behavior comes from
-# env. We expose them here as module attributes via `__getattr__` so each read
-# observes the current settings cache (important if a test resets the cache).
-# ---------------------------------------------------------------------------
 
 
 def __getattr__(name: str) -> object:

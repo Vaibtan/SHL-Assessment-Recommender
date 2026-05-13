@@ -1,4 +1,4 @@
-"""Refine handler — modify an existing shortlist based on user deltas."""
+# Purpose: Refine handler — modify an existing shortlist based on user deltas.
 
 from __future__ import annotations
 
@@ -48,7 +48,6 @@ async def handle_refine(
     prior_items = [index.get(eid) for eid in prior_ids]
     prior_items = [it for it in prior_items if it is not None]
 
-    # If user merely confirmed (empty deltas), preserve the prior shortlist as-is.
     if (
         not decision.constraint_deltas.add
         and not decision.constraint_deltas.drop
@@ -60,7 +59,6 @@ async def handle_refine(
                 entity_ids=[it.entity_id for it in prior_items],
                 fallbacks_triggered=fallbacks,
             )
-        # No prior + no deltas means we should not be in refine — fall back to recommend.
         fallbacks.append("refine_no_prior_falling_back_to_recommend")
         from shl_recommender.agent.handlers.recommend import handle_recommend  # local to avoid cycle
 
@@ -72,7 +70,6 @@ async def handle_refine(
             index=index,
         )
 
-    # Re-retrieve with merged constraints (router has already composed search_query).
     new_candidates = await _build_candidate_pool_async(decision, features, index, llm)
     retrieval_stats = {
         "prior_count": len(prior_items),
@@ -80,7 +77,6 @@ async def handle_refine(
         "pool_size": 0,
     }
 
-    # Build a combined candidate pool: prior shortlist (preserved) ∪ new candidates.
     pool: list[Any] = []
     seen: set[str] = set()
     for it in prior_items:

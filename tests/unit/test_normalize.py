@@ -1,4 +1,4 @@
-"""Unit tests for catalog normalization."""
+# Purpose: Unit tests for catalog normalization.
 
 from __future__ import annotations
 

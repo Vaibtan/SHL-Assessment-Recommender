@@ -54,7 +54,7 @@ Run on the 10 personas in `sample_conversations/` against the real Gemini API (c
 | Mean Recall@10 | **0.98** |
 | Schema valid | **1.0** (every turn, every persona) |
 | Behavior probes | **7/7 pass** (`scripts/probes_live.py`) |
-| Unit + integration + replay tests | **108/108 pass** |
+| Unit + integration + replay tests | **112/112 pass** |
 
 Reproduce with `uv run python scripts/replay_live.py` (writes JSONL to `data/replay_runs/`).
 
@@ -75,7 +75,7 @@ src/shl_recommender/
 │   ├── retrieval.py         # Hybrid retrieval + RRF + filters + coverage
 │   └── query_expansion.py   # Catalog-derived aliases + domain concept rules
 ├── features/
-│   └── pipeline.py          # Pre-router feature bundle (parallel)
+│   └── pipeline.py          # Pre-router feature bundle
 ├── agent/
 │   ├── llm.py               # google-genai wrapper, Vertex auth, async, retries
 │   ├── prompts.py           # All prompt templates (one place to tune)
@@ -95,7 +95,7 @@ scripts/
 └── probes_live.py           # Live behavior probes against the real LLM
 
 tests/
-├── unit/                    # 86 unit tests
+├── unit/                    # 90 unit tests
 ├── integration/             # 10 end-to-end with FakeLLMClient
 └── replay/
     ├── personas.py          # Extract personas + labels from sample_conversations/
@@ -129,7 +129,7 @@ uv run python scripts/build_index.py --dry-run
 #    OR with real embeddings (uses .env automatically):
 uv run python scripts/build_index.py
 
-# 4. Run tests (all 108 should pass)
+# 4. Run tests (all 112 should pass)
 uv run pytest tests/
 
 # 5. Start the service (.env auto-loaded)
@@ -290,14 +290,14 @@ Per-request fields:
 ## Tests
 
 ```bash
-uv run pytest tests/                          # all 108 tests
+uv run pytest tests/                          # all 112 tests
 uv run pytest tests/unit/                     # fast — under 5s
 uv run pytest tests/integration/              # FakeLLMClient end-to-end
 uv run pytest tests/replay/                   # persona harness + scripted probes
 ```
 
 Test layers:
-- **Unit (86)** — pure functions (normalize, retrieval math, validators, features, env-driven config, reply assembly, request-schema hardening, query-expansion alias/concept matching).
+- **Unit (88)** — pure functions (normalize, retrieval math, validators, features, env-driven config, reply assembly, request-schema hardening, query-expansion alias/concept matching).
 - **Integration (10)** — full `/chat` round-trips with `FakeLLMClient`. Schema validation on every turn. Edge cases: hallucinated IDs dropped, refine drop-X removes-X, compare uses both records, FastAPI HTTP path.
 - **Replay (12)** — persona extraction from samples, scripted Recall@10 smoke, and 7 behavior probes (turn-1-vagueness, injection, off-topic, hallucination guard, refuse-never-ends, no-end-without-shortlist tightened to require both `end=False` AND empty recommendations, catalog-only URLs).
 

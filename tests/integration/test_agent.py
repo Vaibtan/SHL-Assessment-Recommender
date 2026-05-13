@@ -1,4 +1,4 @@
-"""End-to-end integration tests with a fake LLM."""
+# Purpose: End-to-end integration tests with a fake LLM.
 
 from __future__ import annotations
 
@@ -90,8 +90,6 @@ async def test_recommend_returns_valid_shortlist(index) -> None:
             }
         )
     )
-    # The recommend handler issues one structured-output selection call.
-    # We pick three plausible IDs that exist in the catalog.
     java_id = next(it.entity_id for it in index.items if "core java" in it.name.lower())
     opq_id = next(it.entity_id for it in index.items if "opq32r" in it.name.lower())
     verify_id = next(it.entity_id for it in index.items if "verify interactive g+" in it.name.lower())
@@ -115,7 +113,6 @@ async def test_recommend_returns_valid_shortlist(index) -> None:
     assert 1 <= len(out.response.recommendations) <= 10
     rec_urls = {r.url for r in out.response.recommendations}
     assert all(url.startswith("https://www.shl.com/") for url in rec_urls)
-    # Materialized table should be embedded.
     assert "| # | Name |" in out.response.reply
     assert out.response.end_of_conversation is False
 
@@ -181,7 +178,6 @@ async def test_compare_uses_grounded_records(index) -> None:
 @pytest.mark.asyncio
 async def test_refine_with_confirmation_ends_conversation(index) -> None:
     llm = FakeLLMClient()
-    # Build a prior shortlist message containing real catalog URLs.
     java = next(it for it in index.items if "core java" in it.name.lower())
     opq = next(it for it in index.items if "opq32r" in it.name.lower())
     prior_md = (
@@ -234,7 +230,6 @@ async def test_refine_drop_removes_item(index) -> None:
             }
         )
     )
-    # Refine handler issues one selection call producing the post-edit shortlist.
     llm.handler_replies.append(
         stub_json({"entity_ids": [java.entity_id], "reply": "Dropped OPQ."})
     )

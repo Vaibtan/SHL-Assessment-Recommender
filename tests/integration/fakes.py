@@ -1,7 +1,4 @@
-"""Test fakes — a deterministic stand-in for LLMClient.
-
-Lets integration tests exercise the full agent pipeline without the network.
-"""
+# Purpose: Test fakes — a deterministic stand-in for LLMClient.
 
 from __future__ import annotations
 
@@ -49,13 +46,10 @@ class FakeLLMClient(LLMClient):
         self.embed_dim: int = get_settings().embedding_dims
         self.call_log: list[dict[str, Any]] = []
 
-    # bypass parent constructor — we don't talk to the network
     def _get_client(self):  # type: ignore[override]
         raise RuntimeError("FakeLLMClient does not call the network")
 
     async def generate_structured(self, **kwargs):  # type: ignore[override]
-        # The router uses generate_structured (small response_schema, no tools).
-        # Selection LLMs in recommend/refine also use generate_structured.
         self.call_log.append({"site": "structured", **{k: v for k, v in kwargs.items() if k != "contents"}})
         replies = self.router_replies if _is_router(kwargs) else self.handler_replies
         return _pop(replies)
@@ -69,13 +63,9 @@ class FakeLLMClient(LLMClient):
         return _pop(self.handler_replies)
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:  # type: ignore[override]
-        # Deterministic, normalized random vectors keyed by text length so
-        # retrieval is stable across runs.
         return self.embed_sync(texts)
 
     def embed_sync(self, texts: Sequence[str]) -> list[list[float]]:  # type: ignore[override]
-        # Deterministic, normalized random vectors keyed by text length so
-        # retrieval is stable across runs.
         out: list[list[float]] = []
         for t in texts:
             seed = sum(ord(c) for c in t) & 0xFFFFFFFF
@@ -94,7 +84,6 @@ def _is_router(kwargs: dict) -> bool:
 
 def _pop(replies: list[StubReply]) -> LLMCallResult:
     if not replies:
-        # Empty queue — surface a clearly-broken response so tests catch it.
         return LLMCallResult(text=None, function_calls=[], finish_reason="STOP")
     r = replies.pop(0)
     return LLMCallResult(

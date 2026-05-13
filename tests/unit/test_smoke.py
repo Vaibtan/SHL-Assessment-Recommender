@@ -1,4 +1,4 @@
-"""Slice 1 smoke tests — endpoints exist and return valid-schema bodies."""
+# Purpose: Slice 1 smoke tests — endpoints exist and return valid-schema bodies.
 
 from __future__ import annotations
 
@@ -28,7 +28,6 @@ def test_chat_returns_valid_schema(client: TestClient) -> None:
     assert response.status_code == 200
     body = ChatResponse.model_validate(response.json())
     assert isinstance(body.reply, str) and body.reply
-    # Slice 2: /chat may return up to 10 valid recommendations from retrieval.
     assert 0 <= len(body.recommendations) <= 10
     for rec in body.recommendations:
         assert rec.url.startswith("https://www.shl.com/")

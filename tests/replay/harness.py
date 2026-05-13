@@ -1,16 +1,4 @@
-"""Replay harness — Recall@10 measurement loop.
-
-Two modes:
-- LIVE: uses a real LLMClient against Vertex / AI Studio (set GOOGLE_CLOUD_PROJECT
-  or GEMINI_API_KEY in env). Slow (~60s per trace) and costs API tokens.
-- SCRIPTED: uses a deterministic FakeLLMClient with pre-baked replies per
-  sample. Used in CI / unit-style smoke runs to validate the pipeline shape.
-
-The harness drives each persona against the agent for up to MAX_TURNS.
-By default it uses the next prepared user-turn from the trace for deterministic
-tests. In live mode, pass `user_llm` to simulate a dynamic user from the
-persona facts, which is closer to the graded evaluator.
-"""
+# Purpose: Replay harness — Recall@10 measurement loop.
 
 from __future__ import annotations
 
@@ -136,7 +124,6 @@ async def replay_persona(
         )
         messages.append(Message(role="assistant", content=response.reply))
 
-        # Persist the latest non-empty shortlist as our final prediction.
         if response.recommendations:
             urls = [r.url for r in response.recommendations]
             record.final_predicted_ids = _ids_for_urls(urls, agent.index)

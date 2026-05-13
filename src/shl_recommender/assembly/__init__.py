@@ -1,1 +1,1 @@
-"""Safety / assembly layer — ID validation, materialization, reply formatting."""
+# Purpose: Safety / assembly layer — ID validation, materialization, reply formatting.

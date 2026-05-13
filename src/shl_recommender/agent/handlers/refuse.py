@@ -1,8 +1,4 @@
-"""Refuse handler — canned templates per category, no LLM call.
-
-Refuse must NEVER hard-end the conversation. Each template offers a redirect
-to keep the user on track.
-"""
+# Purpose: Refuse handler — canned templates per category, no LLM call.
 
 from __future__ import annotations
 
@@ -34,9 +30,6 @@ _DEFAULT_TEMPLATE = _TEMPLATES[RefuseCategory.OFF_TOPIC]
 
 
 async def handle_refuse(*, decision: RouterDecision) -> HandlerResult:
-    # Keep refusal text entirely deterministic. The router's reason is useful
-    # for policy choice, but user-facing text must not echo prompt-injection
-    # phrases or untrusted model wording.
     return HandlerResult(
         reply_text=_TEMPLATES.get(decision.refuse_category, _DEFAULT_TEMPLATE),
         entity_ids=[],

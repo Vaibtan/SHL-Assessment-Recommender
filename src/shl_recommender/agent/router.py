@@ -1,9 +1,4 @@
-"""Router — Policy layer.
-
-Consumes the deterministic FeatureBundle and conversation history, emits a typed
-RouterDecision via Gemini structured output. The router never calls tools and
-never mutates state.
-"""
+# Purpose: Router — Policy layer.
 
 from __future__ import annotations
 
@@ -89,7 +84,6 @@ class RouterDecision(BaseModel):
     is_final_turn: bool = False
 
 
-# --- Heuristic fallback (used if the LLM call fails) -----------------------------------
 
 
 def heuristic_decision(features: FeatureBundle) -> RouterDecision:
@@ -134,7 +128,6 @@ def heuristic_decision(features: FeatureBundle) -> RouterDecision:
     )
 
 
-# --- LLM-based router ------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,7 +146,6 @@ def _format_messages_for_prompt(messages: Sequence[Message]) -> list:
             out.append(user_part(m.content))
         elif m.role == "assistant":
             out.append(model_part(m.content))
-        # system messages are passed via system_instruction; don't include in contents.
     return out
 
 
@@ -196,9 +188,6 @@ async def route(req: RouteRequest, llm: LLMClient) -> RouterDecision:
         log.warning("router_invalid_json_using_heuristic", error=str(e))
         return heuristic_decision(req.features)
 
-    # A bare confirmation without prior shortlist is not a task completion.
-    # The model may try to "commit" a fresh shortlist from words like
-    # "perfect"; deterministic policy keeps that as clarification.
     if (
         decision.is_final_turn
         and not req.features.has_prior_shortlist
@@ -211,8 +200,6 @@ async def route(req: RouteRequest, llm: LLMClient) -> RouterDecision:
             is_final_turn=False,
         )
 
-    # Apply the no-end-without-shortlist invariant *here* — assembly will also
-    # enforce it, but routing logic gets cleaner if the policy field is honest.
     if decision.is_final_turn and not (
         req.features.has_prior_shortlist
         or decision.intent in (Intent.RECOMMEND, Intent.REFINE)

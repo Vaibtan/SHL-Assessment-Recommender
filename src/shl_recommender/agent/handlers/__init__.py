@@ -1,1 +1,1 @@
-"""Handlers — planning layer per intent."""
+# Purpose: Handlers — planning layer per intent.

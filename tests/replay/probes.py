@@ -1,12 +1,4 @@
-"""Behavior probes — short scripted conversations with binary assertions.
-
-These mirror the sorts of probes the graded eval harness is likely to run:
-turn-1 vagueness, prompt injection, off-topic, hallucination, refine honor,
-end-of-conversation invariant, refuse-never-ends.
-
-Each probe builds an agent (live or scripted) and asserts a property of the
-response. A failure here means the agent regressed on a known behavior.
-"""
+# Purpose: Behavior probes — short scripted conversations with binary assertions.
 
 from __future__ import annotations
 
@@ -28,9 +20,6 @@ class ProbeResult:
 ProbeFn = Callable[[Agent, CatalogIndex], Awaitable[ProbeResult]]
 
 
-# --------------------------------------------------------------------------------------
-# Probe definitions
-# --------------------------------------------------------------------------------------
 
 
 async def probe_turn1_vague(agent: Agent, index: CatalogIndex) -> ProbeResult:

@@ -1,9 +1,4 @@
-"""Replay harness smoke test using a scripted FakeLLMClient.
-
-Confirms the harness shape (turn loop, schema validation, recall computation)
-works end-to-end without making network calls. Live LLM replay runs are driven
-by the `replay_live.py` script, not by pytest.
-"""
+# Purpose: Replay harness smoke test using a scripted FakeLLMClient.
 
 from __future__ import annotations
 
@@ -46,7 +41,6 @@ async def test_harness_completes_a_persona_with_scripted_llm(index: CatalogIndex
 
     llm = FakeLLMClient()
 
-    # Turn 1: vague — clarify
     llm.router_replies.append(
         stub_json(
             {
@@ -56,7 +50,6 @@ async def test_harness_completes_a_persona_with_scripted_llm(index: CatalogIndex
             }
         )
     )
-    # Turn 2: more context — recommend
     llm.router_replies.append(
         stub_json(
             {
@@ -82,5 +75,4 @@ async def test_harness_completes_a_persona_with_scripted_llm(index: CatalogIndex
 
     assert record.schema_valid is True
     assert record.final_predicted_ids
-    # Recall@10 should be > 0 since we explicitly returned overlapping ids.
     assert record.recall_at_10 > 0.0

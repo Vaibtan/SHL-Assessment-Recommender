@@ -1,4 +1,4 @@
-"""Clarify handler — one Flash call, no tools, returns a single question."""
+# Purpose: Clarify handler — one Flash call, no tools, returns a single question.
 
 from __future__ import annotations
 
@@ -54,7 +54,6 @@ async def handle_clarify(
     if not text:
         fallbacks.append("clarify_empty_response")
         text = _DEFAULT_CLARIFY
-    # Defensive — strip stray formatting and cap length.
     text = text.split("\n")[0].strip().strip('"')
     if len(text) > 240:
         text = text[:237].rstrip() + "…"

@@ -1,4 +1,4 @@
-"""Unit tests for the feature pipeline."""
+# Purpose: Unit tests for the feature pipeline.
 
 from __future__ import annotations
 
@@ -116,7 +116,6 @@ def test_parse_prior_shortlist_recovers_ids_from_url() -> None:
             ("200", "OPQ32r", "P"),
         ]
     )
-    # Inject the catalog's actual URL pattern, which our markdown parser expects.
     java = next(it for it in idx.items if it.entity_id == "100")
     opq = next(it for it in idx.items if it.entity_id == "200")
     assistant_md = (
@@ -130,8 +129,6 @@ def test_parse_prior_shortlist_recovers_ids_from_url() -> None:
         Message(role="assistant", content=assistant_md),
         Message(role="user", content="add personality"),
     ]
-    # The validator-test indexes use a synthetic /1, /2 URL pattern, so the
-    # markdown URLs in this test embed THAT same pattern.
     ids = parse_prior_shortlist(msgs, idx)
     assert "100" in ids and "200" in ids
 

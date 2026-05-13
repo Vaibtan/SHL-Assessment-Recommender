@@ -1,4 +1,4 @@
-"""Unit tests for persona extraction from sample_conversations/."""
+# Purpose: Unit tests for persona extraction from sample_conversations/.
 
 from __future__ import annotations
 
@@ -41,8 +41,6 @@ def test_each_persona_has_user_turns_and_labels(index: CatalogIndex) -> None:
     for p in personas:
         assert p.user_turns, f"{p.sample_id}: no user turns"
         assert p.opening_message, f"{p.sample_id}: empty opening message"
-        # Most traces have labeled shortlists; allow a couple to slip if parsing fails on edge cases,
-        # but at least 7 of 10 should have non-empty labels for the metric to be meaningful.
     labeled = sum(1 for p in personas if p.expected_entity_ids)
     assert labeled >= 7
 

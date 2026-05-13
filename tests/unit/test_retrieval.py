@@ -1,4 +1,4 @@
-"""Unit tests for retrieval primitives — RRF, filters, hybrid, coverage."""
+# Purpose: Unit tests for retrieval primitives — RRF, filters, hybrid, coverage.
 
 from __future__ import annotations
 
@@ -54,10 +54,8 @@ def test_rrf_fuses_with_known_scores() -> None:
     b = ["y", "x", "w"]
     fused = reciprocal_rank_fusion([a, b], k=60)
     fused_dict = dict(fused)
-    # x: 1/(60+1) + 1/(60+2) ; y: 1/(60+2) + 1/(60+1) -> tie. x and y both top.
     assert fused[0][0] in {"x", "y"}
     assert pytest.approx(fused_dict["x"], rel=1e-6) == pytest.approx(fused_dict["y"], rel=1e-6)
-    # w (rank-2 in only one list) ranks below z (rank-2 in only one list) -> tie also.
     assert fused_dict["w"] == pytest.approx(fused_dict["z"], rel=1e-6)
 
 
@@ -65,7 +63,6 @@ def test_l2_normalize_unit_vectors() -> None:
     m = np.array([[3.0, 4.0], [0.0, 0.0], [1.0, 1.0]], dtype=np.float32)
     out = l2_normalize(m)
     assert pytest.approx(np.linalg.norm(out[0]), rel=1e-6) == 1.0
-    # zero vector stays zero (divisor clamped, not divided by zero)
     assert np.all(np.isfinite(out[1]))
 
 
@@ -96,7 +93,6 @@ def test_hybrid_retrieve_returns_relevant_items() -> None:
     hits = r.retrieve("Java backend developer", final_k=3)
     assert len(hits) > 0
     ranked_ids = [h.entity_id for h in hits[:2]]
-    # Java items should rank above the Python item.
     assert "1" in ranked_ids or "3" in ranked_ids
 
 
@@ -145,8 +141,6 @@ def test_category_coverage_injects_when_missing() -> None:
     embeddings = l2_normalize(rng.standard_normal((len(items), 8)).astype(np.float32))
     coverage = CategoryCoverage(exemplars={letter: () for letter in "KPASBCDE"} | {"P": ("99",)})
     r = Retriever(items, bm25, embeddings, coverage)
-    # Constrain retrieval so "99" doesn't get pulled in naturally:
-    # query_vec=None disables dense retrieval, per_retriever_k=1 keeps only the top BM25 hit.
     hits = r.retrieve("Java", query_vec=None, coverage_letters=("P",), per_retriever_k=1)
     assert any(h.entity_id == "99" and h.injected for h in hits)
 

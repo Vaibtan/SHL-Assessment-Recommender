@@ -1,25 +1,15 @@
-"""Catalog normalization — JSON → clean records → parquet.
-
-Responsibilities:
-- Parse the raw scraped JSON (with control-char tolerance).
-- Sanitize strings (strip non-printable control characters).
-- Derive single-letter `test_type` codes from the `keys` field.
-- Produce the canonical `CatalogItem` records that the index is built from.
-"""
+# Purpose: Catalog normalization — JSON → clean records → parquet.
 
 from __future__ import annotations
 
 import json
 import re
 import unicodedata
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Iterable
+from typing import Final
 
-# Maps the long category name in `keys` to the single-letter API code.
-# Order in the catalog's `keys` list is preserved when building the multi-letter
-# code (e.g. ["Knowledge & Skills", "Simulations"] -> "K,S"), matching the
-# convention seen in the sample conversations.
 KEY_TO_LETTER: Final[dict[str, str]] = {
     "Knowledge & Skills": "K",
     "Personality & Behavior": "P",
@@ -31,10 +21,8 @@ KEY_TO_LETTER: Final[dict[str, str]] = {
     "Assessment Exercises": "E",
 }
 
-# Reverse lookup for any utility that needs to map letter back to category.
 LETTER_TO_KEY: Final[dict[str, str]] = {v: k for k, v in KEY_TO_LETTER.items()}
 
-# Strip ASCII control chars (0x00-0x1F minus tab/newline) and DEL.
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 
@@ -132,7 +120,6 @@ def normalize_record(rec: dict) -> CatalogItem | None:
     keys = tuple(str(k) for k in raw_keys if isinstance(k, str))
     test_type = _to_test_type_code(keys)
     if not test_type:
-        # Schema requires a non-empty single-letter code.
         return None
 
     description = _sanitize(str(rec.get("description", "")))
@@ -189,7 +176,7 @@ def build_search_text(item: CatalogItem, description_chars: int = 1200) -> str:
     return "\n".join(p for p in parts if p)
 
 
-def to_parquet_records(items: list[CatalogItem]) -> list[dict]:
+def to_parquet_records(items: Sequence[CatalogItem]) -> list[dict]:
     """Serialize CatalogItems to dict-rows suitable for parquet."""
     return [
         {
