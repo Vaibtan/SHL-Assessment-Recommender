@@ -11,29 +11,15 @@ The submission endpoint exposes:
 
 ## Architecture (in 30 seconds)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  POLICY LAYER  (deterministic — Python features + 1 LLM)     │
-│  Pre-computed feature bundle → Router (structured output)     │
-│  Emits {intent, search_query, filters, coverage_letters,     │
-│          compare_pair, refuse_*, constraint_deltas, is_final} │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  PLANNING LAYER  (per-intent handlers)                       │
-│  recommend → expansion + hybrid retrieval → selection LLM     │
-│  refine    → parse prior + retrieve candidates → selection LLM│
-│  compare   → resolve pair → grounded explainer                │
-│  clarify   → 1 Flash call, no tools                           │
-│  refuse    → canned template per category, NO LLM            │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  SAFETY/ASSEMBLY LAYER  (Python only)                        │
-│  validate_ids (closed-set) → materialize → end_of_conversation │
-│  invariant → embed markdown shortlist table → ChatResponse   │
-└─────────────────────────────────────────────────────────────┘
-```
+![SHL Assessment Recommender architecture](./docs/architecture.png)
+
+Three layers, top to bottom:
+
+- **Policy** — deterministic feature pipeline + a single structured-output Router call. Emits `{intent, search_query, filters, coverage_letters, compare_pair, refuse_*, constraint_deltas, is_final}`.
+- **Planning** — five per-intent handlers: `recommend` / `refine` / `compare` run a candidate-pool selection LLM; `clarify` is one Flash call; `refuse` is a canned template with no LLM.
+- **Assembly** — closed-set `validate_ids` → `materialize` → `end_of_conversation` invariant → `ChatResponse` with an embedded markdown shortlist table.
+
+`CatalogIndex` (377 items, BM25 + dense + cached lookups) is the shared store touched by all three layers.
 
 The full architectural rationale (what was rejected, why) lives in [`design-decisions.md`](./design-decisions.md). The vertical-slice plan that produced the code is in [`IMPLEMENTATION-CHECKLIST.md`](./IMPLEMENTATION-CHECKLIST.md).
 
